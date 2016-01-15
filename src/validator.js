@@ -1,7 +1,8 @@
 'use strict';
 
-angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', function ValidatorFactory($q, $parse) {
+angular.module('dataValidator', []).provider('Validator', function ValidatorProvider() {
 
+  var provider = this;
   var EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
   var NUMERIC_REGEX = /^[0-9]*$/;
@@ -22,7 +23,7 @@ angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', functi
   * Contains all the registered constraints, Validator comes with built-in constraints.
   * TODO : Allow to register new constraints with Validator.register(function() {...})
   */
-  var constraintFunctions = {
+  provider.constraintFunctions = {
 
     /*
      * Check that the field is presnet (!= undefined, != null and != '')
@@ -148,17 +149,6 @@ angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', functi
     constraint: function (value, testedValue) {
       return testedValue;
     }
-
-
-  };
-
-  /*
-    Contains a list of validation checks, that can be applyed to a unit field
-    RulesClass instances are returned by calls to Validator.rule('error message'), ex: Validator.rule('error message').min(42)
-  */
-  var RuleClass = function (message) {
-    this.message = message;
-    this.rules = [];
   };
 
   // For each constraintfunction, construct a "chain invocation style function" for RuleClass
@@ -167,7 +157,7 @@ angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', functi
       var args = Array.prototype.slice.call(arguments);
       var rule = {
         constraint: constraintName,
-        fct: constraintFunctions[constraintName]
+        fct: provider.constraintFunctions[constraintName]
       };
       if (args.length) {
         rule.args = args;
@@ -177,74 +167,88 @@ angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', functi
     };
   }
 
-  for (var id in constraintFunctions) {
-    RuleClass.prototype[id] = constructRuleClassFunction(id);
-  }
+  
+
+  this.$get = ['$q', '$parse', function ($q, $parse) {
+	  
+	/*
+    Contains a list of validation checks, that can be applyed to a unit field
+    RulesClass instances are returned by calls to Validator.rule('error message'), ex: Validator.rule('error message').min(42)
+	*/
+	var RuleClass = function (message) {
+		this.message = message;
+		this.rules = [];
+	};
 
 
-  /*
-  * Prototype of all the error objects
-  */
-  var ErrorClass = function() {};
+    for (var id in provider.constraintFunctions) {
+      RuleClass.prototype[id] = constructRuleClassFunction(id);
+	}
 
-  /*
-  * Apply all the registered constraints to the input value,
-  * returns undefined if all constraints are ok, else returns the rule object that was not validated
-  */
-  RuleClass.prototype.check = function (value, mainObject) {
 
-    for (var i = 0; i < this.rules.length; i++) {
-      var rule = this.rules[i];
+	  /*
+	  * Prototype of all the error objects
+	  */
+	  var ErrorClass = function() {};
 
-      // Construct arguments of the called check function
-      var args = [value];
-      for (var j in rule.args) {
-        if (typeof rule.args[j] === 'function') {
-          args.push(rule.args[j](value, mainObject));
-        } else {
-          args.push(rule.args[j]);
-        }
-      }
+	  /*
+	  * Apply all the registered constraints to the input value,
+	  * returns undefined if all constraints are ok, else returns the rule object that was not validated
+	  */
+	  RuleClass.prototype.check = function (value, mainObject) {
 
-      if (!rule.fct.apply(null, args)) {
-        var error = new ErrorClass();
-        error.constraint = rule.constraint;
-        error.value = value;
+		for (var i = 0; i < this.rules.length; i++) {
+		  var rule = this.rules[i];
 
-        if (args.length > 1) {
-          error.args = args.slice(1);
-        }
+		  // Construct arguments of the called check function
+		  var args = [value];
+		  for (var j in rule.args) {
+			if (typeof rule.args[j] === 'function') {
+			  args.push(rule.args[j](value, mainObject));
+			} else {
+			  args.push(rule.args[j]);
+			}
+		  }
 
-        if (typeof this.message === 'function') {
-          error.message = this.message(value, mainObject);
-        } else {
-          error.message = this.message;
-        }
+		  if (!rule.fct.apply(null, args)) {
+			var error = new ErrorClass();
+			error.constraint = rule.constraint;
+			error.value = value;
 
-        return error;
-      }
-    }
-  };
+			if (args.length > 1) {
+			  error.args = args.slice(1);
+			}
 
-  /*
-  Validate a simple field, and returns a promise
-  */
-  RuleClass.prototype.validate = function (value) {
+			if (typeof this.message === 'function') {
+			  error.message = this.message(value, mainObject);
+			} else {
+			  error.message = this.message;
+			}
 
-    var deferred = $q.defer();
+			return error;
+		  }
+		}
+	  };
 
-    var result = this.check(value);
+	  /*
+	  Validate a simple field, and returns a promise
+	  */
+	  RuleClass.prototype.validate = function (value) {
 
-    if (result !== undefined) {
-      deferred.reject(result);
-    } else {
-      deferred.resolve();
-    }
+		var deferred = $q.defer();
 
-    return deferred.promise;
-  };
+		var result = this.check(value);
 
-  /*
+		if (result !== undefined) {
+		  deferred.reject(result);
+		} else {
+		  deferred.resolve();
+		}
+
+		return deferred.promise;
+	  };
+
+	  /*
   * Apply a list of validation rules to an object, constructed by Validator({...});
   */
   var RuleSetClass = function (ruleSet) {
@@ -327,6 +331,6 @@ angular.module('dataValidator', []).factory('Validator', ['$q', '$parse', functi
 
 
   return Validator;
+  }];
 
-
-}]);
+});
