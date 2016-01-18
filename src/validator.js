@@ -21,7 +21,6 @@ angular.module('dataValidator', []).provider('Validator', function ValidatorProv
 
   /*
   * Contains all the registered constraints, Validator comes with built-in constraints.
-  * TODO : Allow to register new constraints with Validator.register(function() {...})
   */
   provider.constraintFunctions = {
 
@@ -151,6 +150,20 @@ angular.module('dataValidator', []).provider('Validator', function ValidatorProv
     }
   };
 
+  /**
+  * Register new constraints with
+  * var rules = {
+  *   customRule: function(value) { return !!value; }
+  * }
+  *
+  * ValidatorProvider.register(rules)
+  */
+  provider.register = function(rules) {
+    angular.forEach(rules, function(func, key) {
+      provider.constraintFunctions[key] = func;
+    });
+  };
+  
   // For each constraintfunction, construct a "chain invocation style function" for RuleClass
   function constructRuleClassFunction(constraintName) {
     return function () {
