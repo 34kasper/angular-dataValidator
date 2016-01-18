@@ -341,6 +341,42 @@ angular.module('dataValidator', []).provider('Validator', function ValidatorProv
   Validator.isError = function(errorObject) {
     return errorObject !== undefined && errorObject !== null && errorObject.constructor === ErrorClass;
   };
+  
+  Validator.formDirective = function() {
+    return {
+      require: 'form',
+      restrict: 'A',
+      link: function (scope, element, attrs, ctrl) {
+        // TODO
+        // Get rules list
+        console.log(ctrl);
+        
+        ctrl.validate() {
+          // TODO send event to all child input directive to validate
+          // once an input is validated send event to form directive
+          // form is validated or not once all child answered
+        };
+      }
+    }
+  };
+  
+  Validator.inputDirective = function() {
+    return {
+      require: ['^form', 'ngModel'],
+      restrict: 'A',
+      link: function(scope, element, attrs, ctrls) {
+        var inputCtrl = ctrls[1];
+        console.log(inputCtrl);
+        
+        
+        inputCtrl.validate() {
+          // TODO get rules for this input
+          // validate value
+          // then send event to tell formCtrl that, this input is validated
+        };
+      }
+    }
+  };
 
 
   return Validator;
